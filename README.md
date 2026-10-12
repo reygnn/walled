@@ -16,6 +16,9 @@ It is the wallpaper editor of Unity-Launcher, made into its own app.
 - **Snapping:** 🧲 magnetic snapping to the screen edges or to the center,
   separately for the horizontal and vertical axis, with a rubber-band
   resistance and a haptic tick at the edge.
+- **Fix in place:** 📌 locks the layers against drag and pinch, so a system
+  gesture from the screen edge (home, back, switching apps) cannot nudge
+  them. Buttons keep working; adding a layer releases the lock.
 - **Layer stack:** move the active layer up/down, remove it, or remove all.
 - **Set wallpaper:** 🏠 home screen, 🔒 lock screen, or 📱 both. The layers
   are rendered at the screen's native resolution.

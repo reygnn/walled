@@ -11,6 +11,8 @@
     <string name="cd_set_home">Set as home screen</string>
     <string name="cd_set_lock">Set as lock screen</string>
     <string name="cd_set_both">Set as home and lock screen</string>
+    <string name="cd_lock_position">Fix layers in place</string>
+    <string name="cd_unlock_position">Release layers</string>
     <string name="cd_open_commands">Open menu</string>
     <string name="cd_close_panel">Close menu</string>
 

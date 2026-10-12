@@ -199,6 +199,8 @@ fun EditorScreen(
                 hasActiveLayer = state.activeLayerId != null && state.activeLayerId in state.decoded,
                 canApply = state.canApply,
                 isBusy = state.isBusy,
+                positionLocked = state.positionLocked,
+                onTogglePositionLock = viewModel::togglePositionLock,
                 onAddLayer = {
                     pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 },

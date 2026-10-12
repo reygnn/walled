@@ -83,6 +83,11 @@ data class EditorUiState(
     val unloadable: Set<String> = emptySet(),
     val activeLayerId: String? = null,
     val snap: SnapSettings = SnapSettings(),
+    /**
+     * Fixed: the canvas ignores drag and pinch, so a system gesture from the
+     * screen edge (home, back, app switch) cannot nudge a layer. Buttons still work.
+     */
+    val positionLocked: Boolean = false,
     val isBusy: Boolean = false,
     val message: EditorMessage? = null,
     /** Name of the chosen project folder, or null when none is set. */
@@ -206,6 +211,7 @@ class EditorViewModel(
                     loaded = true,
                     wallpaper = persisted.state,
                     snap = persisted.snap,
+                    positionLocked = persisted.positionLocked,
                     activeLayerId = persisted.state.layers.lastOrNull()?.id,
                     projectName = persisted.project.name,
                 )
@@ -267,6 +273,8 @@ class EditorViewModel(
                 )
             }
             persistLayers()
+            // A new layer is there to be placed: release the lock (as wallpan does on a new image).
+            if (_state.value.positionLocked) setPositionLocked(false)
         }
     }
 
@@ -350,6 +358,7 @@ class EditorViewModel(
      */
     fun dragBy(dx: Float, dy: Float): Boolean {
         val s = _state.value
+        if (s.positionLocked) return false
         val active = s.placedLayers.firstOrNull { it.id == s.activeLayerId } ?: return false
         val t = active.transform
         val r = LayerSnap.resist(
@@ -369,6 +378,7 @@ class EditorViewModel(
     fun pinchBy(factor: Float, focusX: Float, focusY: Float) {
         if (!factor.isFinite() || factor <= 0f) return
         val s = _state.value
+        if (s.positionLocked) return
         val active = s.placedLayers.firstOrNull { it.id == s.activeLayerId } ?: return
         val d = active.decoded
         val range = LayerGeometry.scaleRange(d.originalWidth, d.originalHeight, s.frameWidth, s.frameHeight)
@@ -423,6 +433,18 @@ class EditorViewModel(
 
     private fun setTransform(layerId: String, transform: LayerTransform) {
         _state.update { it.copy(wallpaper = it.wallpaper.withTransform(layerId, transform)) }
+    }
+
+    // ---- position lock ----
+
+    fun togglePositionLock() = setPositionLocked(!_state.value.positionLocked)
+
+    /** A running snap-back keeps going: it settles on a valid position and saves it. */
+    private fun setPositionLocked(locked: Boolean) {
+        _state.update { it.copy(positionLocked = locked) }
+        viewModelScope.launch {
+            writeLock.withLock { withContext(ioDispatcher) { repository.savePositionLocked(locked) } }
+        }
     }
 
     // ---- snap settings ----

@@ -9,6 +9,8 @@
     <string name="cd_set_home">Als Startbildschirm setzen</string>
     <string name="cd_set_lock">Als Sperrbildschirm setzen</string>
     <string name="cd_set_both">Als Start- und Sperrbildschirm setzen</string>
+    <string name="cd_lock_position">Ebenen fixieren</string>
+    <string name="cd_unlock_position">Ebenen lösen</string>
     <string name="cd_open_commands">Menü öffnen</string>
     <string name="cd_close_panel">Menü schließen</string>
 

@@ -47,12 +47,16 @@ class EditorViewModelTest {
         val savedLayers = mutableListOf<WallpaperState>()
         val savedSnaps = mutableListOf<SnapSettings>()
         val savedProjects = mutableListOf<ProjectRef>()
+        val savedLocks = mutableListOf<Boolean>()
         override suspend fun load() = persisted
         override suspend fun saveLayers(state: WallpaperState) {
             savedLayers += state
         }
         override suspend fun saveSnap(snap: SnapSettings) {
             savedSnaps += snap
+        }
+        override suspend fun savePositionLocked(locked: Boolean) {
+            savedLocks += locked
         }
         override suspend fun saveProject(project: ProjectRef) {
             savedProjects += project
@@ -402,6 +406,75 @@ class EditorViewModelTest {
         assertEquals(WallpaperState.NONE, repository.savedLayers.last())
         assertEquals(0, File(tmp.root, "layers").listFiles()!!.size)
         assertNull(vm.state.value.activeLayerId)
+    }
+
+    // ---- position lock ----
+
+    @Test
+    fun `a fixed layer ignores drag and pinch, and the lock is saved`() = runTest(mainRule.testDispatcher) {
+        val start = LayerTransform(1f, 50f, 50f)
+        persist(WallpaperLayerState(id = "a", imageFile = "f", transform = start) to (100 to 100))
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.togglePositionLock()
+        advanceUntilIdle()
+        vm.gestureStart()
+        assertFalse(vm.dragBy(-500f, 0f))
+        vm.pinchBy(3f, 0f, 0f)
+        vm.gestureEnd()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.positionLocked)
+        assertEquals(start, vm.state.value.wallpaper.layers.single().transform)
+        assertTrue(repository.savedLayers.isEmpty())
+        assertEquals(listOf(true), repository.savedLocks)
+    }
+
+    @Test
+    fun `buttons and selection still work while fixed`() = runTest(mainRule.testDispatcher) {
+        persist(
+            WallpaperLayerState(id = "a", imageFile = "fa", transform = LayerTransform(1f, 0f, 0f)) to (300 to 500),
+            WallpaperLayerState(id = "b", imageFile = "fb", transform = LayerTransform(1f, 0f, 0f)) to (100 to 100),
+        )
+        repository.persisted = repository.persisted.copy(positionLocked = true)
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.positionLocked)
+        assertTrue(vm.tapAt(200f, 300f))
+        assertEquals("a", vm.state.value.activeLayerId)
+        vm.fitActiveToWidth()
+        advanceUntilIdle()
+        assertEquals(LayerGeometry.fitWidth(300, 500, frameW, frameH), repository.savedLayers.last().layers[0].transform)
+    }
+
+    @Test
+    fun `adding a layer releases the lock`() = runTest(mainRule.testDispatcher) {
+        repository.persisted = repository.persisted.copy(positionLocked = true)
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.addLayer("new.png") { "image".byteInputStream() }
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.positionLocked)
+        assertEquals(listOf(false), repository.savedLocks)
+    }
+
+    @Test
+    fun `fixing during a snap-back lets it settle and save`() = runTest(mainRule.testDispatcher) {
+        persist(WallpaperLayerState(id = "a", imageFile = "f", transform = LayerTransform(1f, 0f, 0f)) to (100 to 100))
+        val vm = createViewModel()
+        advanceUntilIdle()
+        vm.gestureStart()
+        vm.dragBy(-50f, 0f)
+        vm.gestureEnd()
+
+        vm.togglePositionLock()
+        advanceUntilIdle()
+
+        assertEquals(LayerTransform(1f, 0f, 0f), repository.savedLayers.last().layers.single().transform)
     }
 
     // ---- projects ----

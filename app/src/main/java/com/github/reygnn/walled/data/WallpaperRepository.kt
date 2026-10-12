@@ -16,10 +16,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-/** What survives process death: the layers, the snap settings and the project folder. */
+/** What survives process death: the layers, the snap settings, the position lock and the project folder. */
 data class PersistedEditor(
     val state: WallpaperState = WallpaperState.NONE,
     val snap: SnapSettings = SnapSettings(),
+    val positionLocked: Boolean = false,
     val project: ProjectRef = ProjectRef(),
 )
 
@@ -37,6 +38,7 @@ interface WallpaperRepository {
     suspend fun load(): PersistedEditor
     suspend fun saveLayers(state: WallpaperState)
     suspend fun saveSnap(snap: SnapSettings)
+    suspend fun savePositionLocked(locked: Boolean)
     suspend fun saveProject(project: ProjectRef)
 }
 
@@ -73,6 +75,7 @@ class DataStoreWallpaperRepository(context: Context) : WallpaperRepository {
         val SNAP_MODE = stringPreferencesKey("snap_mode")
         val SNAP_HORIZONTAL = booleanPreferencesKey("snap_horizontal")
         val SNAP_VERTICAL = booleanPreferencesKey("snap_vertical")
+        val POSITION_LOCKED = booleanPreferencesKey("position_locked")
         val PROJECT_FOLDER = stringPreferencesKey("project_folder_uri")
         val PROJECT_NAME = stringPreferencesKey("project_name")
     }
@@ -88,6 +91,7 @@ class DataStoreWallpaperRepository(context: Context) : WallpaperRepository {
                 horizontal = prefs[Keys.SNAP_HORIZONTAL] ?: defaults.horizontal,
                 vertical = prefs[Keys.SNAP_VERTICAL] ?: defaults.vertical,
             ),
+            positionLocked = prefs[Keys.POSITION_LOCKED] ?: false,
             project = ProjectRef(folderUri = prefs[Keys.PROJECT_FOLDER], name = prefs[Keys.PROJECT_NAME]),
         )
     }
@@ -104,6 +108,10 @@ class DataStoreWallpaperRepository(context: Context) : WallpaperRepository {
             it[Keys.SNAP_HORIZONTAL] = snap.horizontal
             it[Keys.SNAP_VERTICAL] = snap.vertical
         }
+    }
+
+    override suspend fun savePositionLocked(locked: Boolean) {
+        store.edit { it[Keys.POSITION_LOCKED] = locked }
     }
 
     override suspend fun saveProject(project: ProjectRef) {

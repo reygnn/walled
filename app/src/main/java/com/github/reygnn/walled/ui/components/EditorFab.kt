@@ -38,14 +38,16 @@ import kotlin.math.roundToInt
  *
  * The dial holds the frequent commands: ☰ opens the [CommandsPanel], the
  * set-wallpaper row (🏠 home, 🔒 lock, both), the placement row for the active
- * layer (↔ fit width, 1:1 original size, ⛶ fill) and ➕ add layer. The position
- * is local UI state.
+ * layer (↔ fit width, 1:1 original size, ⛶ fill), 📌 fix the layers against
+ * stray gestures, and ➕ add layer. The FAB position is local UI state.
  */
 @Composable
 fun EditorFab(
     hasActiveLayer: Boolean,
     canApply: Boolean,
     isBusy: Boolean,
+    positionLocked: Boolean,
+    onTogglePositionLock: () -> Unit,
     onAddLayer: () -> Unit,
     onFitWidth: () -> Unit,
     onOriginalSize: () -> Unit,
@@ -127,6 +129,16 @@ fun EditorFab(
                             onClick = onCenterCrop,
                         )
                     }
+                    // Fix / release the layers. The symbol shows the current state
+                    // (📌 fixed, 🔓 free), as in wallpan.
+                    MiniFab(
+                        symbol = if (positionLocked) "📌" else "🔓",
+                        contentDescription = stringResource(
+                            if (positionLocked) R.string.cd_unlock_position else R.string.cd_lock_position,
+                        ),
+                        enabled = true,
+                        onClick = { expanded = false; onTogglePositionLock() },
+                    )
                     MiniFab(
                         symbol = "➕",
                         contentDescription = stringResource(R.string.cd_add_layer),

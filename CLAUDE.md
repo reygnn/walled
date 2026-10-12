@@ -46,7 +46,9 @@ Deliberate differences from the launcher:
 
 Does: pick images as layers (photo picker), move/zoom the active layer,
 select by tap, reorder/remove layers, fit-width / 1:1 / fill presets,
-magnetic snapping (edges or center, per axis), memory info, set as home /
+magnetic snapping (edges or center, per axis), 📌 position lock (canvas
+ignores drag/pinch, persisted; adding a layer releases it, as in wallpan),
+memory info, set as home /
 lock / both, JSON projects (open/save in a user-chosen folder).
 
 Doesn't (needs explicit agreement before building): rotation, per-layer
@@ -56,7 +58,8 @@ it too — see `TODO.md`).
 ## Stack particulars
 
 - DataStore Preferences for the layer list (JSON via kotlinx-serialization),
-  the snap settings and the project folder (tree URI) + last project name.
+  the snap settings, the position lock and the project folder (tree URI) +
+  last project name.
 - `androidx.documentfile` for the project folder (Storage Access Framework).
 - kotlinx-serialization 1.11.0 (plugin version tracks Kotlin).
 - Release builds are **unsigned**; `~/apk/install-aab.sh` signs them with the
