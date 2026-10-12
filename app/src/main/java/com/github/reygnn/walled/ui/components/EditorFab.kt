@@ -130,9 +130,9 @@ fun EditorFab(
                         )
                     }
                     // Fix / release the layers. The symbol shows the current state
-                    // (📌 fixed, 🔓 free), as in wallpan.
+                    // (📌 fixed, ✋ free to move). Not a padlock: 🔒 already means lock screen.
                     MiniFab(
-                        symbol = if (positionLocked) "📌" else "🔓",
+                        symbol = if (positionLocked) "📌" else "✋",
                         contentDescription = stringResource(
                             if (positionLocked) R.string.cd_unlock_position else R.string.cd_lock_position,
                         ),
