@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Normal (install-time) permission, auto-granted: lets the app set the
+         home/lock wallpaper directly via WallpaperManager, bypassing the
+         system picker's crop/zoom so the composite lands pixel-exact. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
+    <application
+        android:name=".WalledApplication"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Walled"
+        android:supportsRtl="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

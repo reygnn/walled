@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Single-color glyph: three stacked sheets (system tints it). -->
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="3"
+        android:pathData="M49,30 L67,30 Q71,30 71,34 L71,70 Q71,74 67,74 M45,34 L63,34 Q67,34 67,38 L67,74 Q67,78 63,78" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M41,38 L59,38 Q63,38 63,42 L63,78 Q63,82 59,82 L41,82 Q37,82 37,78 L37,42 Q37,38 41,38 Z" />
+</vector>

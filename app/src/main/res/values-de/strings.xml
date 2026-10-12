@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Content descriptions -->
+    <string name="cd_editor_fab">Editor-Menü ein-/ausblenden</string>
+    <string name="cd_add_layer">Ebene hinzufügen</string>
+    <string name="cd_fit_width">Ebene an Breite anpassen</string>
+    <string name="cd_original_size">Ebene in Originalgröße zeigen</string>
+    <string name="cd_center_crop">Bildschirm mit Ebene füllen</string>
+    <string name="cd_set_home">Als Startbildschirm setzen</string>
+    <string name="cd_set_lock">Als Sperrbildschirm setzen</string>
+    <string name="cd_set_both">Als Start- und Sperrbildschirm setzen</string>
+    <string name="cd_open_commands">Menü öffnen</string>
+    <string name="cd_close_panel">Menü schließen</string>
+
+    <!-- Commands panel -->
+    <string name="cp_title">Menü</string>
+    <string name="cp_layer_indicator">Ebene %1$d / %2$d</string>
+    <string name="cp_no_layer">Keine Ebene ausgewählt</string>
+    <string name="cp_btn_layer_up">⬆ Hoch</string>
+    <string name="cp_btn_layer_down">⬇ Runter</string>
+    <string name="cp_btn_remove_layer">🗑 Ebene entfernen</string>
+    <plurals name="cp_unloadable">
+        <item quantity="one">%1$d Ebene konnte nicht geladen werden. Entferne sie, um das Wallpaper zu setzen.</item>
+        <item quantity="other">%1$d Ebenen konnten nicht geladen werden. Entferne sie, um das Wallpaper zu setzen.</item>
+    </plurals>
+    <string name="cp_btn_remove_unloadable">Nicht ladbare Ebenen entfernen</string>
+    <string name="cp_section_snap">Einrasten</string>
+    <string name="cp_chip_snap">🧲 Einrasten</string>
+    <string name="cp_chip_mode_edge">Ränder</string>
+    <string name="cp_chip_mode_center">Mitte</string>
+    <string name="cp_chip_horizontal">↔ Horizontal</string>
+    <string name="cp_chip_vertical">↕ Vertikal</string>
+    <string name="cp_btn_memory">📊 Speicher</string>
+    <string name="cp_btn_remove_all">🧹 Alle Ebenen entfernen</string>
+
+    <!-- Dialogs -->
+    <string name="memory_title">Speicher</string>
+    <string name="memory_row">Ebene %1$d: %2$d × %3$d px, %4$s (%5$s)</string>
+    <string name="memory_row_source">\nQuelle %1$d × %2$d px, verkleinert 1:%3$d</string>
+    <string name="memory_total">Gesamt: %1$s</string>
+    <string name="remove_all_title">Alle Ebenen entfernen?</string>
+    <string name="remove_all_message">Alle Ebenen und ihre Bildkopien werden gelöscht. Das aktuelle System-Wallpaper bleibt unverändert.</string>
+    <string name="remove_all_confirm">Entfernen</string>
+
+    <!-- Editor -->
+    <string name="editor_empty_state">Noch keine Ebenen\nTippe 🛠 → ➕ zum Starten</string>
+
+    <!-- Messages -->
+    <string name="msg_home_set">✅ Startbildschirm gesetzt!</string>
+    <string name="msg_lock_set">✅ Sperrbildschirm gesetzt!</string>
+    <string name="msg_both_set">✅ Start- und Sperrbildschirm gesetzt!</string>
+    <string name="msg_apply_failed">❌ Das Wallpaper konnte nicht gesetzt werden.</string>
+    <string name="msg_add_failed">❌ Das Bild konnte nicht geladen werden.</string>
+    <plurals name="msg_layers_unloadable">
+        <item quantity="one">⚠ %1$d Ebene konnte nicht geladen werden.</item>
+        <item quantity="other">⚠ %1$d Ebenen konnten nicht geladen werden.</item>
+    </plurals>
+</resources>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">walled</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_editor_fab">Toggle editor menu</string>
+    <string name="cd_add_layer">Add layer</string>
+    <string name="cd_fit_width">Fit layer to width</string>
+    <string name="cd_original_size">Show layer at original size</string>
+    <string name="cd_center_crop">Fill screen with layer</string>
+    <string name="cd_set_home">Set as home screen</string>
+    <string name="cd_set_lock">Set as lock screen</string>
+    <string name="cd_set_both">Set as home and lock screen</string>
+    <string name="cd_open_commands">Open menu</string>
+    <string name="cd_close_panel">Close menu</string>
+
+    <!-- Commands panel -->
+    <string name="cp_title">Menu</string>
+    <string name="cp_layer_indicator">Layer %1$d / %2$d</string>
+    <string name="cp_no_layer">No layer selected</string>
+    <string name="cp_btn_layer_up">⬆ Up</string>
+    <string name="cp_btn_layer_down">⬇ Down</string>
+    <string name="cp_btn_remove_layer">🗑 Remove layer</string>
+    <plurals name="cp_unloadable">
+        <item quantity="one">%1$d layer could not be loaded. Remove it to set the wallpaper.</item>
+        <item quantity="other">%1$d layers could not be loaded. Remove them to set the wallpaper.</item>
+    </plurals>
+    <string name="cp_btn_remove_unloadable">Remove unloadable layers</string>
+    <string name="cp_section_snap">Snapping</string>
+    <string name="cp_chip_snap">🧲 Snap</string>
+    <string name="cp_chip_mode_edge">Edges</string>
+    <string name="cp_chip_mode_center">Center</string>
+    <string name="cp_chip_horizontal">↔ Horizontal</string>
+    <string name="cp_chip_vertical">↕ Vertical</string>
+    <string name="cp_btn_memory">📊 Memory</string>
+    <string name="cp_btn_remove_all">🧹 Remove all layers</string>
+
+    <!-- Dialogs -->
+    <string name="memory_title">Memory</string>
+    <string name="memory_row">Layer %1$d: %2$d × %3$d px, %4$s (%5$s)</string>
+    <string name="memory_row_source">\nsource %1$d × %2$d px, downsampled 1:%3$d</string>
+    <string name="memory_total">Total: %1$s</string>
+    <string name="remove_all_title">Remove all layers?</string>
+    <string name="remove_all_message">Every layer and its image copy is deleted. The current system wallpaper stays as it is.</string>
+    <string name="remove_all_confirm">Remove</string>
+
+    <!-- Editor -->
+    <string name="editor_empty_state">No layers yet\nTap 🛠 → ➕ to start</string>
+
+    <!-- Messages -->
+    <string name="msg_home_set">✅ Home screen set!</string>
+    <string name="msg_lock_set">✅ Lock screen set!</string>
+    <string name="msg_both_set">✅ Home and lock screen set!</string>
+    <string name="msg_apply_failed">❌ The wallpaper could not be set.</string>
+    <string name="msg_add_failed">❌ The image could not be loaded.</string>
+    <plurals name="msg_layers_unloadable">
+        <item quantity="one">⚠ %1$d layer could not be loaded.</item>
+        <item quantity="other">⚠ %1$d layers could not be loaded.</item>
+    </plurals>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Three stacked portrait sheets: the layer stack. -->
+    <path android:fillColor="#5C3FB8" android:strokeColor="#FFFFFF" android:strokeWidth="2.5"
+        android:pathData="M49,30 L67,30 Q71,30 71,34 L71,70 Q71,74 67,74 L49,74 Q45,74 45,70 L45,34 Q45,30 49,30 Z" />
+    <path android:fillColor="#1FA89E" android:strokeColor="#FFFFFF" android:strokeWidth="2.5"
+        android:pathData="M45,34 L63,34 Q67,34 67,38 L67,74 Q67,78 63,78 L45,78 Q41,78 41,74 L41,38 Q41,34 45,34 Z" />
+    <path android:fillColor="#FFC58A" android:strokeColor="#FFFFFF" android:strokeWidth="2.5"
+        android:pathData="M41,38 L59,38 Q63,38 63,42 L63,78 Q63,82 59,82 L41,82 Q37,82 37,78 L37,42 Q37,38 41,38 Z" />
+    <path android:fillColor="#FFE89C"
+        android:pathData="M44,52 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 Z" />
+</vector>
