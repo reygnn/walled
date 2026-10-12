@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.github.reygnn.walled.imaging.PreviewFit
 import com.github.reygnn.walled.model.SnapMode
 import com.github.reygnn.walled.model.SnapSettings
 import com.github.reygnn.walled.model.WallpaperLayerState
@@ -23,7 +24,7 @@ data class PersistedEditor(
     val snap: SnapSettings = SnapSettings(),
     val positionLocked: Boolean = false,
     /** Display-only preview enlargement (see `PreviewFit`); 1 = none. */
-    val previewZoom: Float = 1f,
+    val previewZoom: Float = PreviewFit.ZOOM_DEFAULT,
     val project: ProjectRef = ProjectRef(),
 )
 
@@ -97,7 +98,7 @@ class DataStoreWallpaperRepository(context: Context) : WallpaperRepository {
                 vertical = prefs[Keys.SNAP_VERTICAL] ?: defaults.vertical,
             ),
             positionLocked = prefs[Keys.POSITION_LOCKED] ?: false,
-            previewZoom = prefs[Keys.PREVIEW_ZOOM] ?: 1f,
+            previewZoom = prefs[Keys.PREVIEW_ZOOM] ?: PreviewFit.ZOOM_DEFAULT,
             project = ProjectRef(folderUri = prefs[Keys.PROJECT_FOLDER], name = prefs[Keys.PROJECT_NAME]),
         )
     }

@@ -489,6 +489,8 @@ class EditorViewModelTest {
             persist(WallpaperLayerState(id = "a", imageFile = "f", transform = LayerTransform(1f, 0f, 0f)) to (100 to 100))
             val vm = createViewModel()
             advanceUntilIdle()
+            // A fresh install starts at Android's wallpaper zoom.
+            assertEquals(1.10f, vm.state.value.previewZoom)
 
             vm.setPreviewZoom(1.12f)
             vm.setPreviewZoom(9f)

@@ -20,7 +20,8 @@ It is the wallpaper editor of Unity-Launcher, made into its own app.
   gesture from the screen edge (home, back, switching apps) cannot nudge
   them. Buttons keep working; adding a layer releases the lock.
 - **Preview factor:** the home screen enlarges a set wallpaper a little
-  (Android's wallpaper zoom). Type that factor (🔍, 1.00–2.00) and the
+  (Android's wallpaper zoom; preset to 1.10, which matches a Pixel). Type
+  that factor (🔍, 1.00–2.00) and the
   preview enlarges the same way, so it shows what will really be visible.
   Only the preview changes, never the set image.
 - **Layer stack:** move the active layer up/down, remove it, or remove all.

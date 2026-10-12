@@ -19,6 +19,12 @@ data class PreviewFit(val scale: Float, val offsetX: Float, val offsetY: Float) 
     companion object {
         /** No simulation; also the floor — the home screen never shows LESS than the frame. */
         const val ZOOM_MIN = 1.0f
+        /**
+         * Default for a fresh install: AOSP's wallpaper zoom (`config_wallpaperMaxScale`
+         * = 1.10). Confirmed on the Pixel 9a by comparing a preview screenshot with the
+         * home screen; other launchers (Samsung) may differ — the user types their own.
+         */
+        const val ZOOM_DEFAULT = 1.10f
         const val ZOOM_MAX = 2.0f
 
         /** A typed factor clamped to [ZOOM_MIN]..[ZOOM_MAX]; NaN/∞ fall back to [ZOOM_MIN]. */

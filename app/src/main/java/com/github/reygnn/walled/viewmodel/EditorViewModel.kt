@@ -90,7 +90,7 @@ data class EditorUiState(
      */
     val positionLocked: Boolean = false,
     /** Display-only preview enlargement simulating the home screen's wallpaper zoom; never exported. */
-    val previewZoom: Float = PreviewFit.ZOOM_MIN,
+    val previewZoom: Float = PreviewFit.ZOOM_DEFAULT,
     val isBusy: Boolean = false,
     val message: EditorMessage? = null,
     /** Name of the chosen project folder, or null when none is set. */
