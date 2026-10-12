@@ -50,6 +50,7 @@ import com.github.reygnn.walled.ui.components.EditorFab
 import com.github.reygnn.walled.ui.components.LayerCanvas
 import com.github.reygnn.walled.ui.components.MemoryDialog
 import com.github.reygnn.walled.ui.components.OpenProjectDialog
+import com.github.reygnn.walled.ui.components.PreviewZoomDialog
 import com.github.reygnn.walled.ui.components.SaveProjectDialog
 import com.github.reygnn.walled.viewmodel.EditorMessage
 import com.github.reygnn.walled.viewmodel.EditorViewModel
@@ -70,6 +71,7 @@ fun EditorScreen(
     var openProjectDialog by remember { mutableStateOf(false) }
     var saveProjectDialog by remember { mutableStateOf(false) }
     var confirmReplace by remember { mutableStateOf<String?>(null) }
+    var previewZoomDialog by remember { mutableStateOf(false) }
 
     // The output frame is the whole display in portrait — what the system
     // wallpaper covers. maximumWindowMetrics ignores the hidden system bars.
@@ -141,6 +143,7 @@ fun EditorScreen(
                 activeLayerId = state.activeLayerId,
                 frameWidth = state.frameWidth,
                 frameHeight = state.frameHeight,
+                previewZoom = state.previewZoom,
                 onTap = { p ->
                     if (viewModel.tapAt(p.x, p.y)) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                 },
@@ -170,6 +173,8 @@ fun EditorScreen(
                     layerCount = state.wallpaper.layerCount,
                     unloadableCount = state.unloadable.size,
                     snap = state.snap,
+                    previewZoom = state.previewZoom,
+                    onEditPreviewZoom = { previewZoomDialog = true },
                     projectFolderName = state.projectFolderName,
                     projectName = state.projectName,
                     onChooseFolder = { pickFolder.launch(null) },
@@ -221,6 +226,16 @@ fun EditorScreen(
 
     memoryReport?.let { report ->
         MemoryDialog(report = report, onDismiss = { memoryReport = null })
+    }
+    if (previewZoomDialog) {
+        PreviewZoomDialog(
+            current = state.previewZoom,
+            onConfirm = {
+                viewModel.setPreviewZoom(it)
+                previewZoomDialog = false
+            },
+            onDismiss = { previewZoomDialog = false },
+        )
     }
     if (openProjectDialog) {
         OpenProjectDialog(

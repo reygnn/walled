@@ -18,6 +18,7 @@ import com.github.reygnn.walled.imaging.DecodedLayer
 import com.github.reygnn.walled.imaging.LayerGeometry
 import com.github.reygnn.walled.imaging.LayerSnap
 import com.github.reygnn.walled.imaging.PlacedLayer
+import com.github.reygnn.walled.imaging.PreviewFit
 import com.github.reygnn.walled.imaging.WallpaperFlattener
 import com.github.reygnn.walled.imaging.decodeLayer
 import com.github.reygnn.walled.model.LayerTransform
@@ -88,6 +89,8 @@ data class EditorUiState(
      * screen edge (home, back, app switch) cannot nudge a layer. Buttons still work.
      */
     val positionLocked: Boolean = false,
+    /** Display-only preview enlargement simulating the home screen's wallpaper zoom; never exported. */
+    val previewZoom: Float = PreviewFit.ZOOM_MIN,
     val isBusy: Boolean = false,
     val message: EditorMessage? = null,
     /** Name of the chosen project folder, or null when none is set. */
@@ -212,6 +215,7 @@ class EditorViewModel(
                     wallpaper = persisted.state,
                     snap = persisted.snap,
                     positionLocked = persisted.positionLocked,
+                    previewZoom = PreviewFit.clampZoom(persisted.previewZoom),
                     activeLayerId = persisted.state.layers.lastOrNull()?.id,
                     projectName = persisted.project.name,
                 )
@@ -444,6 +448,18 @@ class EditorViewModel(
         _state.update { it.copy(positionLocked = locked) }
         viewModelScope.launch {
             writeLock.withLock { withContext(ioDispatcher) { repository.savePositionLocked(locked) } }
+        }
+    }
+
+    // ---- preview zoom ----
+
+    /** Sets the typed preview factor, clamped to [PreviewFit.ZOOM_MIN]..[PreviewFit.ZOOM_MAX], and saves it. */
+    fun setPreviewZoom(value: Float) {
+        val zoom = PreviewFit.clampZoom(value)
+        if (zoom == _state.value.previewZoom) return
+        _state.update { it.copy(previewZoom = zoom) }
+        viewModelScope.launch {
+            writeLock.withLock { withContext(ioDispatcher) { repository.savePreviewZoom(zoom) } }
         }
     }
 

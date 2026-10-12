@@ -85,4 +85,11 @@
     <string name="msg_project_files_missing">❌ Missing or unreadable: %1$s</string>
     <string name="msg_project_save_failed">❌ The project could not be saved.</string>
     <string name="msg_folder_unavailable">❌ The project folder is no longer accessible. Choose it again.</string>
+
+    <!-- Preview zoom -->
+    <string name="cp_section_preview_zoom">Preview factor</string>
+    <string name="cp_btn_edit_preview_zoom">🔍 Change…</string>
+    <string name="preview_zoom_title">Preview factor</string>
+    <string name="preview_zoom_message">Simulates how the home screen enlarges the wallpaper after it is set (1.00–2.00). Affects only the preview, never the set image.</string>
+    <string name="preview_zoom_label">Factor (e.g. 1.10)</string>
 </resources>

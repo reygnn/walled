@@ -48,6 +48,7 @@ class EditorViewModelTest {
         val savedSnaps = mutableListOf<SnapSettings>()
         val savedProjects = mutableListOf<ProjectRef>()
         val savedLocks = mutableListOf<Boolean>()
+        val savedZooms = mutableListOf<Float>()
         override suspend fun load() = persisted
         override suspend fun saveLayers(state: WallpaperState) {
             savedLayers += state
@@ -57,6 +58,9 @@ class EditorViewModelTest {
         }
         override suspend fun savePositionLocked(locked: Boolean) {
             savedLocks += locked
+        }
+        override suspend fun savePreviewZoom(zoom: Float) {
+            savedZooms += zoom
         }
         override suspend fun saveProject(project: ProjectRef) {
             savedProjects += project
@@ -476,6 +480,32 @@ class EditorViewModelTest {
 
         assertEquals(LayerTransform(1f, 0f, 0f), repository.savedLayers.last().layers.single().transform)
     }
+
+    // ---- preview zoom ----
+
+    @Test
+    fun `the preview factor is clamped, saved and restored, and never reaches the export`() =
+        runTest(mainRule.testDispatcher) {
+            persist(WallpaperLayerState(id = "a", imageFile = "f", transform = LayerTransform(1f, 0f, 0f)) to (100 to 100))
+            val vm = createViewModel()
+            advanceUntilIdle()
+
+            vm.setPreviewZoom(1.12f)
+            vm.setPreviewZoom(9f)
+            advanceUntilIdle()
+            assertEquals(2f, vm.state.value.previewZoom)
+            assertEquals(listOf(1.12f, 2f), repository.savedZooms)
+
+            vm.apply(WallpaperTarget.HOME)
+            advanceUntilIdle()
+            assertEquals(LayerTransform(1f, 0f, 0f), exports.single().state.layers.single().transform)
+            assertEquals(frameW to frameH, exports.single().w to exports.single().h)
+
+            repository.persisted = repository.persisted.copy(previewZoom = 1.08f)
+            val restored = createViewModel()
+            advanceUntilIdle()
+            assertEquals(1.08f, restored.state.value.previewZoom)
+        }
 
     // ---- projects ----
 

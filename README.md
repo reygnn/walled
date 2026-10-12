@@ -19,6 +19,10 @@ It is the wallpaper editor of Unity-Launcher, made into its own app.
 - **Fix in place:** 📌 locks the layers against drag and pinch, so a system
   gesture from the screen edge (home, back, switching apps) cannot nudge
   them. Buttons keep working; adding a layer releases the lock.
+- **Preview factor:** the home screen enlarges a set wallpaper a little
+  (Android's wallpaper zoom). Type that factor (🔍, 1.00–2.00) and the
+  preview enlarges the same way, so it shows what will really be visible.
+  Only the preview changes, never the set image.
 - **Layer stack:** move the active layer up/down, remove it, or remove all.
 - **Set wallpaper:** 🏠 home screen, 🔒 lock screen, or 📱 both. The layers
   are rendered at the screen's native resolution.

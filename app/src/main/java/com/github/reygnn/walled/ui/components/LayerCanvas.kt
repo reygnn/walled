@@ -25,20 +25,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.graphics.withSave
 import com.github.reygnn.walled.imaging.LayerPainter
 import com.github.reygnn.walled.imaging.PlacedLayer
-import kotlin.math.min
-
-/** Maps the output frame into the canvas: uniform [scale], centered by [offsetX]/[offsetY]. */
-private data class FrameFit(val scale: Float, val offsetX: Float, val offsetY: Float) {
-    fun toFrame(p: Offset) = Offset((p.x - offsetX) / scale, (p.y - offsetY) / scale)
-
-    companion object {
-        fun of(canvasW: Float, canvasH: Float, frameW: Int, frameH: Int): FrameFit? {
-            if (frameW <= 0 || frameH <= 0 || canvasW <= 0f || canvasH <= 0f) return null
-            val k = min(canvasW / frameW, canvasH / frameH)
-            return FrameFit(k, (canvasW - frameW * k) / 2f, (canvasH - frameH * k) / 2f)
-        }
-    }
-}
+import com.github.reygnn.walled.imaging.PreviewFit
 
 private const val TAP_MAX_DURATION_MS = 300L
 private const val SELECTION_BORDER_DP = 1.5f
@@ -50,8 +37,8 @@ private const val SELECTION_BORDER_COLOR = 0x99FFFFFF.toInt()
  * gestures for the active layer — one finger drags, two fingers pinch, a quick
  * tap selects the topmost layer under the finger.
  *
- * The immersive canvas normally IS the frame (scale 1); [FrameFit] covers the
- * case where it is not, so gestures and drawing stay in frame pixels either way.
+ * The immersive canvas normally IS the frame; [PreviewFit] maps between the two
+ * (and applies the preview zoom), so gestures and drawing stay in frame pixels.
  */
 @Composable
 fun LayerCanvas(
@@ -59,6 +46,8 @@ fun LayerCanvas(
     activeLayerId: String?,
     frameWidth: Int,
     frameHeight: Int,
+    /** Display-only enlargement simulating the home screen's wallpaper zoom (see [PreviewFit]). */
+    previewZoom: Float,
     onTap: (Offset) -> Unit,
     onGestureStart: () -> Unit,
     /** Returns true when the drag just reached a new edge (haptic tick). */
@@ -88,11 +77,12 @@ fun LayerCanvas(
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(frameWidth, frameHeight) {
+            .pointerInput(frameWidth, frameHeight, previewZoom) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    val fit = FrameFit.of(size.width.toFloat(), size.height.toFloat(), frameWidth, frameHeight)
+                    val fit = PreviewFit.of(size.width.toFloat(), size.height.toFloat(), frameWidth, frameHeight, previewZoom)
                         ?: return@awaitEachGesture
+                    fun toFrame(p: Offset) = Offset(fit.toFrameX(p.x), fit.toFrameY(p.y))
                     start()
                     val slop = viewConfiguration.touchSlop
                     var travelled = 0f
@@ -106,7 +96,7 @@ fun LayerCanvas(
                             multiTouch = true
                             pastSlop = true
                             val zoom = event.calculateZoom()
-                            if (zoom != 1f) pinch(zoom, fit.toFrame(event.calculateCentroid(useCurrent = true)))
+                            if (zoom != 1f) pinch(zoom, toFrame(event.calculateCentroid(useCurrent = true)))
                         } else if (pressed == 1) {
                             val pan = event.calculatePan()
                             if (!pastSlop) {
@@ -123,14 +113,14 @@ fun LayerCanvas(
                         }
                     } while (event.changes.any { it.pressed })
                     if (!pastSlop && !multiTouch && lastUptime - down.uptimeMillis < TAP_MAX_DURATION_MS) {
-                        tap(fit.toFrame(down.position))
+                        tap(toFrame(down.position))
                     }
                     end()
                 }
             },
     ) {
         drawRect(Color.Black)
-        val fit = FrameFit.of(size.width, size.height, frameWidth, frameHeight) ?: return@Canvas
+        val fit = PreviewFit.of(size.width, size.height, frameWidth, frameHeight, previewZoom) ?: return@Canvas
         drawIntoCanvas { canvas ->
             canvas.nativeCanvas.withSave {
                 translate(fit.offsetX, fit.offsetY)

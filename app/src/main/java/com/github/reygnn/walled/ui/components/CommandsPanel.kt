@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.github.reygnn.walled.R
 import com.github.reygnn.walled.model.SnapMode
 import com.github.reygnn.walled.model.SnapSettings
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -50,6 +51,8 @@ fun CommandsPanel(
     layerCount: Int,
     unloadableCount: Int,
     snap: SnapSettings,
+    previewZoom: Float,
+    onEditPreviewZoom: () -> Unit,
     projectFolderName: String?,
     projectName: String?,
     onChooseFolder: () -> Unit,
@@ -205,6 +208,25 @@ fun CommandsPanel(
                     enabled = snap.enabled,
                     label = { Text(stringResource(R.string.cp_chip_vertical)) },
                 )
+            }
+
+            HorizontalDivider()
+
+            // Display-only: simulates the home screen's zoom of the set wallpaper.
+            Text(stringResource(R.string.cp_section_preview_zoom), style = MaterialTheme.typography.labelMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = String.format(Locale.US, "%.2f×", previewZoom),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedButton(onClick = onEditPreviewZoom) {
+                    Text(stringResource(R.string.cp_btn_edit_preview_zoom))
+                }
             }
 
             HorizontalDivider()

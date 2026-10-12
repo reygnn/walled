@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -17,11 +18,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.github.reygnn.walled.R
 import com.github.reygnn.walled.model.MemoryReport
 import com.github.reygnn.walled.model.ProjectCodec
 import com.github.reygnn.walled.model.formatMegabytes
+import java.util.Locale
 
 /** Per-layer decoded size, source size and retained memory (launcher's memory dialog). */
 @Composable
@@ -147,6 +150,41 @@ fun ConfirmReplaceDialog(projectName: String, onConfirm: () -> Unit, onDismiss: 
         text = { Text(stringResource(R.string.replace_message)) },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(stringResource(R.string.replace_confirm)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+        },
+    )
+}
+
+/**
+ * Typed input for the preview factor (from wallpan). A German decimal comma is
+ * accepted; the ViewModel clamps the value. No slider on purpose: the factor is
+ * a per-device constant typed once.
+ */
+@Composable
+fun PreviewZoomDialog(current: Float, onConfirm: (Float) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(String.format(Locale.US, "%.2f", current)) }
+    val parsed = text.trim().replace(',', '.').toFloatOrNull()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.preview_zoom_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.preview_zoom_message))
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.preview_zoom_label)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { parsed?.let(onConfirm) ?: onDismiss() }) {
+                Text(stringResource(android.R.string.ok))
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }

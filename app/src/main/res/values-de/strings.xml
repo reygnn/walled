@@ -83,4 +83,11 @@
     <string name="msg_project_files_missing">❌ Fehlt oder ist nicht lesbar: %1$s</string>
     <string name="msg_project_save_failed">❌ Das Projekt konnte nicht gespeichert werden.</string>
     <string name="msg_folder_unavailable">❌ Auf den Projektordner gibt es keinen Zugriff mehr. Wähle ihn erneut.</string>
+
+    <!-- Preview zoom -->
+    <string name="cp_section_preview_zoom">Vorschau-Faktor</string>
+    <string name="cp_btn_edit_preview_zoom">🔍 Ändern…</string>
+    <string name="preview_zoom_title">Vorschau-Faktor</string>
+    <string name="preview_zoom_message">Simuliert, wie der Startbildschirm das Wallpaper nach dem Setzen vergrößert (1,00–2,00). Wirkt nur auf die Vorschau, nie auf das gesetzte Bild.</string>
+    <string name="preview_zoom_label">Faktor (z. B. 1,10)</string>
 </resources>

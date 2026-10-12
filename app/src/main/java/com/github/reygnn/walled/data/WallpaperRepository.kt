@@ -6,6 +6,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.github.reygnn.walled.model.SnapMode
@@ -21,6 +22,8 @@ data class PersistedEditor(
     val state: WallpaperState = WallpaperState.NONE,
     val snap: SnapSettings = SnapSettings(),
     val positionLocked: Boolean = false,
+    /** Display-only preview enlargement (see `PreviewFit`); 1 = none. */
+    val previewZoom: Float = 1f,
     val project: ProjectRef = ProjectRef(),
 )
 
@@ -39,6 +42,7 @@ interface WallpaperRepository {
     suspend fun saveLayers(state: WallpaperState)
     suspend fun saveSnap(snap: SnapSettings)
     suspend fun savePositionLocked(locked: Boolean)
+    suspend fun savePreviewZoom(zoom: Float)
     suspend fun saveProject(project: ProjectRef)
 }
 
@@ -76,6 +80,7 @@ class DataStoreWallpaperRepository(context: Context) : WallpaperRepository {
         val SNAP_HORIZONTAL = booleanPreferencesKey("snap_horizontal")
         val SNAP_VERTICAL = booleanPreferencesKey("snap_vertical")
         val POSITION_LOCKED = booleanPreferencesKey("position_locked")
+        val PREVIEW_ZOOM = floatPreferencesKey("preview_zoom")
         val PROJECT_FOLDER = stringPreferencesKey("project_folder_uri")
         val PROJECT_NAME = stringPreferencesKey("project_name")
     }
@@ -92,6 +97,7 @@ class DataStoreWallpaperRepository(context: Context) : WallpaperRepository {
                 vertical = prefs[Keys.SNAP_VERTICAL] ?: defaults.vertical,
             ),
             positionLocked = prefs[Keys.POSITION_LOCKED] ?: false,
+            previewZoom = prefs[Keys.PREVIEW_ZOOM] ?: 1f,
             project = ProjectRef(folderUri = prefs[Keys.PROJECT_FOLDER], name = prefs[Keys.PROJECT_NAME]),
         )
     }
@@ -112,6 +118,10 @@ class DataStoreWallpaperRepository(context: Context) : WallpaperRepository {
 
     override suspend fun savePositionLocked(locked: Boolean) {
         store.edit { it[Keys.POSITION_LOCKED] = locked }
+    }
+
+    override suspend fun savePreviewZoom(zoom: Float) {
+        store.edit { it[Keys.PREVIEW_ZOOM] = zoom }
     }
 
     override suspend fun saveProject(project: ProjectRef) {

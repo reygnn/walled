@@ -48,7 +48,8 @@ Does: pick images as layers (photo picker), move/zoom the active layer,
 select by tap, reorder/remove layers, fit-width / 1:1 / fill presets,
 magnetic snapping (edges or center, per axis), 📌 position lock (canvas
 ignores drag/pinch, persisted; adding a layer releases it, as in wallpan),
-memory info, set as home /
+🔍 preview factor (display-only, from wallpan — see `PreviewFit`), memory
+info, set as home /
 lock / both, JSON projects (open/save in a user-chosen folder).
 
 Doesn't (needs explicit agreement before building): rotation, per-layer
@@ -58,7 +59,8 @@ it too — see `TODO.md`).
 ## Stack particulars
 
 - DataStore Preferences for the layer list (JSON via kotlinx-serialization),
-  the snap settings, the position lock and the project folder (tree URI) +
+  the snap settings, the position lock, the preview factor and the project
+  folder (tree URI) +
   last project name.
 - `androidx.documentfile` for the project folder (Storage Access Framework).
 - kotlinx-serialization 1.11.0 (plugin version tracks Kotlin).
@@ -83,7 +85,9 @@ com.github.reygnn.walled/
 
 The output **frame** is the display in portrait (`maximumWindowMetrics`).
 Layer transforms, gestures and the export are all in frame pixels;
-`LayerCanvas` maps its own coordinates to the frame (`FrameFit`).
+`LayerCanvas` maps its own coordinates to the frame with `PreviewFit`, which
+also applies the display-only preview factor (it never reaches a transform,
+a project or the export).
 
 ## Hard rules
 
