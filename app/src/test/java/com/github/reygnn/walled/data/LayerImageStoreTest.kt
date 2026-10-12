@@ -74,4 +74,13 @@ class LayerImageStoreTest {
     fun `orphan gc on a missing directory is a no-op`() {
         assertEquals(0, store.deleteOrphans(emptySet()))
     }
+
+    @Test
+    fun `length and header read the stored file`() {
+        val name = store.copyIn { "PNGDATA".byteInputStream() }!!
+        assertEquals(7L, store.length(name))
+        assertEquals("PNG", store.header(name, 3)!!.decodeToString())
+        assertNull(store.length("gone"))
+        assertNull(store.header("gone"))
+    }
 }

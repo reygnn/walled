@@ -57,4 +57,30 @@
         <item quantity="one">⚠ %1$d layer could not be loaded.</item>
         <item quantity="other">⚠ %1$d layers could not be loaded.</item>
     </plurals>
+
+    <!-- Projects -->
+    <string name="cp_section_projects">Projects</string>
+    <string name="cp_no_folder">No project folder chosen</string>
+    <string name="cp_folder">📁 %1$s</string>
+    <string name="cp_folder_project">📁 %1$s · %2$s</string>
+    <string name="cp_btn_open_project">📂 Open…</string>
+    <string name="cp_btn_save_project">💾 Save…</string>
+    <string name="cp_btn_choose_folder">📁 Choose folder…</string>
+    <string name="open_project_title">Open project</string>
+    <string name="open_project_empty">This folder has no project files (*.json).</string>
+    <string name="save_project_title">Save project</string>
+    <string name="save_project_label">Project name</string>
+    <string name="save_project_overwrite">%1$s already exists and will be overwritten.</string>
+    <string name="save_project_confirm">Save</string>
+    <string name="replace_title">Open %1$s?</string>
+    <string name="replace_message">The project replaces the current layers. Save them as a project first if you want to keep them.</string>
+    <string name="replace_confirm">Open</string>
+    <string name="msg_project_opened">📂 %1$s opened</string>
+    <string name="msg_project_saved">💾 %1$s saved</string>
+    <string name="msg_project_not_a_project">❌ This is not a walled project file.</string>
+    <string name="msg_project_newer_version">❌ The project was made by a newer version of walled.</string>
+    <string name="msg_project_bad_file_name">❌ The project names a file outside its folder.</string>
+    <string name="msg_project_files_missing">❌ Missing or unreadable: %1$s</string>
+    <string name="msg_project_save_failed">❌ The project could not be saved.</string>
+    <string name="msg_folder_unavailable">❌ The project folder is no longer accessible. Choose it again.</string>
 </resources>

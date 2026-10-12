@@ -57,6 +57,17 @@ class LayerImageStore(private val dir: File) {
     /** A fresh stream for [fileName], or `null` if it is gone. */
     fun open(fileName: String): InputStream? = fileFor(fileName)?.takeIf { it.isFile }?.inputStream()
 
+    /** Size of [fileName] in bytes, or `null` if it is gone. */
+    fun length(fileName: String): Long? = fileFor(fileName)?.takeIf { it.isFile }?.length()
+
+    /** The first [size] bytes of [fileName] (fewer for a short file), or `null` if it is gone. */
+    fun header(fileName: String, size: Int = 16): ByteArray? = try {
+        open(fileName)?.use { it.readNBytes(size) }
+    } catch (e: IOException) {
+        Log.w(TAG, "Reading the header of $fileName failed", e)
+        null
+    }
+
     fun delete(fileNames: Collection<String>) {
         fileNames.forEach { name -> fileFor(name)?.delete() }
     }

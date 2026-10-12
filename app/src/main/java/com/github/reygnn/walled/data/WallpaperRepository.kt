@@ -16,10 +16,17 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-/** What survives process death: the layers and the snap settings. */
+/** What survives process death: the layers, the snap settings and the project folder. */
 data class PersistedEditor(
     val state: WallpaperState = WallpaperState.NONE,
     val snap: SnapSettings = SnapSettings(),
+    val project: ProjectRef = ProjectRef(),
+)
+
+/** The chosen project folder (a SAF tree URI) and the project last opened or saved there. */
+data class ProjectRef(
+    val folderUri: String? = null,
+    val name: String? = null,
 )
 
 /**
@@ -30,6 +37,7 @@ interface WallpaperRepository {
     suspend fun load(): PersistedEditor
     suspend fun saveLayers(state: WallpaperState)
     suspend fun saveSnap(snap: SnapSettings)
+    suspend fun saveProject(project: ProjectRef)
 }
 
 /** The layer list as JSON — pure, JVM-tested. A corrupt payload reads as no layers. */
@@ -65,6 +73,8 @@ class DataStoreWallpaperRepository(context: Context) : WallpaperRepository {
         val SNAP_MODE = stringPreferencesKey("snap_mode")
         val SNAP_HORIZONTAL = booleanPreferencesKey("snap_horizontal")
         val SNAP_VERTICAL = booleanPreferencesKey("snap_vertical")
+        val PROJECT_FOLDER = stringPreferencesKey("project_folder_uri")
+        val PROJECT_NAME = stringPreferencesKey("project_name")
     }
 
     override suspend fun load(): PersistedEditor {
@@ -78,6 +88,7 @@ class DataStoreWallpaperRepository(context: Context) : WallpaperRepository {
                 horizontal = prefs[Keys.SNAP_HORIZONTAL] ?: defaults.horizontal,
                 vertical = prefs[Keys.SNAP_VERTICAL] ?: defaults.vertical,
             ),
+            project = ProjectRef(folderUri = prefs[Keys.PROJECT_FOLDER], name = prefs[Keys.PROJECT_NAME]),
         )
     }
 
@@ -92,6 +103,13 @@ class DataStoreWallpaperRepository(context: Context) : WallpaperRepository {
             it[Keys.SNAP_MODE] = snap.mode.name
             it[Keys.SNAP_HORIZONTAL] = snap.horizontal
             it[Keys.SNAP_VERTICAL] = snap.vertical
+        }
+    }
+
+    override suspend fun saveProject(project: ProjectRef) {
+        store.edit {
+            if (project.folderUri != null) it[Keys.PROJECT_FOLDER] = project.folderUri else it.remove(Keys.PROJECT_FOLDER)
+            if (project.name != null) it[Keys.PROJECT_NAME] = project.name else it.remove(Keys.PROJECT_NAME)
         }
     }
 }

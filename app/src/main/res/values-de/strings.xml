@@ -55,4 +55,30 @@
         <item quantity="one">⚠ %1$d Ebene konnte nicht geladen werden.</item>
         <item quantity="other">⚠ %1$d Ebenen konnten nicht geladen werden.</item>
     </plurals>
+
+    <!-- Projects -->
+    <string name="cp_section_projects">Projekte</string>
+    <string name="cp_no_folder">Kein Projektordner gewählt</string>
+    <string name="cp_folder">📁 %1$s</string>
+    <string name="cp_folder_project">📁 %1$s · %2$s</string>
+    <string name="cp_btn_open_project">📂 Öffnen…</string>
+    <string name="cp_btn_save_project">💾 Speichern…</string>
+    <string name="cp_btn_choose_folder">📁 Ordner wählen…</string>
+    <string name="open_project_title">Projekt öffnen</string>
+    <string name="open_project_empty">In diesem Ordner gibt es keine Projektdateien (*.json).</string>
+    <string name="save_project_title">Projekt speichern</string>
+    <string name="save_project_label">Projektname</string>
+    <string name="save_project_overwrite">%1$s gibt es schon und wird überschrieben.</string>
+    <string name="save_project_confirm">Speichern</string>
+    <string name="replace_title">%1$s öffnen?</string>
+    <string name="replace_message">Das Projekt ersetzt die aktuellen Ebenen. Speichere sie vorher als Projekt, wenn du sie behalten willst.</string>
+    <string name="replace_confirm">Öffnen</string>
+    <string name="msg_project_opened">📂 %1$s geöffnet</string>
+    <string name="msg_project_saved">💾 %1$s gespeichert</string>
+    <string name="msg_project_not_a_project">❌ Das ist keine walled-Projektdatei.</string>
+    <string name="msg_project_newer_version">❌ Das Projekt stammt aus einer neueren walled-Version.</string>
+    <string name="msg_project_bad_file_name">❌ Das Projekt verweist auf eine Datei außerhalb seines Ordners.</string>
+    <string name="msg_project_files_missing">❌ Fehlt oder ist nicht lesbar: %1$s</string>
+    <string name="msg_project_save_failed">❌ Das Projekt konnte nicht gespeichert werden.</string>
+    <string name="msg_folder_unavailable">❌ Auf den Projektordner gibt es keinen Zugriff mehr. Wähle ihn erneut.</string>
 </resources>

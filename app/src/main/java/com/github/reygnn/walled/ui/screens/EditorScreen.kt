@@ -1,5 +1,9 @@
 package com.github.reygnn.walled.ui.screens
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.util.Log
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,13 +38,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.view.HapticFeedbackConstants
 import com.github.reygnn.walled.R
+import com.github.reygnn.walled.data.SafProjectFolder
+import com.github.reygnn.walled.model.ProjectCodec
+import com.github.reygnn.walled.model.ProjectProblem
 import com.github.reygnn.walled.model.MemoryReport
 import com.github.reygnn.walled.model.WallpaperTarget
 import com.github.reygnn.walled.ui.components.CommandsPanel
 import com.github.reygnn.walled.ui.components.ConfirmRemoveAllDialog
+import com.github.reygnn.walled.ui.components.ConfirmReplaceDialog
 import com.github.reygnn.walled.ui.components.EditorFab
 import com.github.reygnn.walled.ui.components.LayerCanvas
 import com.github.reygnn.walled.ui.components.MemoryDialog
+import com.github.reygnn.walled.ui.components.OpenProjectDialog
+import com.github.reygnn.walled.ui.components.SaveProjectDialog
 import com.github.reygnn.walled.viewmodel.EditorMessage
 import com.github.reygnn.walled.viewmodel.EditorViewModel
 import kotlin.math.max
@@ -57,6 +67,9 @@ fun EditorScreen(
     var commandsOpen by remember { mutableStateOf(false) }
     var memoryReport by remember { mutableStateOf<MemoryReport?>(null) }
     var confirmRemoveAll by remember { mutableStateOf(false) }
+    var openProjectDialog by remember { mutableStateOf(false) }
+    var saveProjectDialog by remember { mutableStateOf(false) }
+    var confirmReplace by remember { mutableStateOf<String?>(null) }
 
     // The output frame is the whole display in portrait — what the system
     // wallpaper covers. maximumWindowMetrics ignores the hidden system bars.
@@ -66,7 +79,14 @@ fun EditorScreen(
     }
 
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) viewModel.addLayer { context.contentResolver.openInputStream(uri) }
+        if (uri != null) viewModel.addLayer(displayName(context, uri)) { context.contentResolver.openInputStream(uri) }
+    }
+
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            SafProjectFolder.persistGrant(context, uri)
+            viewModel.setProjectFolder(uri.toString())
+        }
     }
 
     val homeSet = stringResource(R.string.msg_home_set)
@@ -74,12 +94,21 @@ fun EditorScreen(
     val bothSet = stringResource(R.string.msg_both_set)
     val applyFailed = stringResource(R.string.msg_apply_failed)
     val addFailed = stringResource(R.string.msg_add_failed)
-    val unloadableText = state.message.let { msg ->
-        if (msg is EditorMessage.LayersUnloadable) {
-            pluralStringResource(R.plurals.msg_layers_unloadable, msg.count, msg.count)
-        } else {
-            ""
-        }
+    val messageText = when (val msg = state.message) {
+        is EditorMessage.LayersUnloadable -> pluralStringResource(R.plurals.msg_layers_unloadable, msg.count, msg.count)
+        is EditorMessage.ProjectOpened -> stringResource(R.string.msg_project_opened, msg.name)
+        is EditorMessage.ProjectSaved -> stringResource(R.string.msg_project_saved, msg.name)
+        is EditorMessage.ProjectInvalid -> stringResource(
+            when (msg.problem) {
+                ProjectProblem.NOT_A_PROJECT -> R.string.msg_project_not_a_project
+                ProjectProblem.NEWER_VERSION -> R.string.msg_project_newer_version
+                ProjectProblem.BAD_FILE_NAME -> R.string.msg_project_bad_file_name
+            },
+        )
+        is EditorMessage.ProjectFilesMissing -> stringResource(R.string.msg_project_files_missing, msg.files.joinToString(", "))
+        EditorMessage.ProjectSaveFailed -> stringResource(R.string.msg_project_save_failed)
+        EditorMessage.FolderUnavailable -> stringResource(R.string.msg_folder_unavailable)
+        else -> ""
     }
     LaunchedEffect(state.message) {
         val (text, long) = when (val msg = state.message) {
@@ -90,7 +119,10 @@ fun EditorScreen(
             } to false
             EditorMessage.ApplyFailed -> applyFailed to true
             EditorMessage.AddFailed -> addFailed to true
-            is EditorMessage.LayersUnloadable -> unloadableText to true
+            is EditorMessage.ProjectOpened, is EditorMessage.ProjectSaved -> messageText to false
+            is EditorMessage.LayersUnloadable, is EditorMessage.ProjectInvalid, is EditorMessage.ProjectFilesMissing,
+            EditorMessage.ProjectSaveFailed, EditorMessage.FolderUnavailable,
+            -> messageText to true
             null -> return@LaunchedEffect
         }
         Toast.makeText(context, text, if (long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
@@ -138,6 +170,14 @@ fun EditorScreen(
                     layerCount = state.wallpaper.layerCount,
                     unloadableCount = state.unloadable.size,
                     snap = state.snap,
+                    projectFolderName = state.projectFolderName,
+                    projectName = state.projectName,
+                    onChooseFolder = { pickFolder.launch(null) },
+                    onOpenProject = {
+                        viewModel.refreshProjects()
+                        openProjectDialog = true
+                    },
+                    onSaveProject = { saveProjectDialog = true },
                     onMoveUp = { viewModel.moveActiveLayer(+1) },
                     onMoveDown = { viewModel.moveActiveLayer(-1) },
                     onRemoveLayer = viewModel::removeActiveLayer,
@@ -180,6 +220,37 @@ fun EditorScreen(
     memoryReport?.let { report ->
         MemoryDialog(report = report, onDismiss = { memoryReport = null })
     }
+    if (openProjectDialog) {
+        OpenProjectDialog(
+            projects = state.projects,
+            onOpen = { name ->
+                openProjectDialog = false
+                if (state.wallpaper.hasWallpaper) confirmReplace = name else viewModel.openProject(name)
+            },
+            onDismiss = { openProjectDialog = false },
+        )
+    }
+    confirmReplace?.let { name ->
+        ConfirmReplaceDialog(
+            projectName = name,
+            onConfirm = {
+                confirmReplace = null
+                viewModel.openProject(name)
+            },
+            onDismiss = { confirmReplace = null },
+        )
+    }
+    if (saveProjectDialog) {
+        SaveProjectDialog(
+            initialName = state.projectName?.removeSuffix(ProjectCodec.EXTENSION) ?: "",
+            exists = { it in state.projects },
+            onSave = { name ->
+                saveProjectDialog = false
+                viewModel.saveProject(name)
+            },
+            onDismiss = { saveProjectDialog = false },
+        )
+    }
     if (confirmRemoveAll) {
         ConfirmRemoveAllDialog(
             onConfirm = {
@@ -189,4 +260,14 @@ fun EditorScreen(
             onDismiss = { confirmRemoveAll = false },
         )
     }
+}
+
+/** The picked image's own file name, for saving it into a project under that name. */
+private fun displayName(context: Context, uri: Uri): String? = try {
+    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        if (c.moveToFirst()) c.getString(0) else null
+    }
+} catch (e: SecurityException) {
+    Log.w("EditorScreen", "No display name for $uri", e)
+    null
 }

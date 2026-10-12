@@ -10,6 +10,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.github.reygnn.walled.WalledApplication
 import com.github.reygnn.walled.data.LayerImageStore
+import com.github.reygnn.walled.data.ProjectFolder
+import com.github.reygnn.walled.data.ProjectRef
+import com.github.reygnn.walled.data.SafProjectFolder
 import com.github.reygnn.walled.data.WallpaperRepository
 import com.github.reygnn.walled.imaging.DecodedLayer
 import com.github.reygnn.walled.imaging.LayerGeometry
@@ -20,6 +23,12 @@ import com.github.reygnn.walled.imaging.decodeLayer
 import com.github.reygnn.walled.model.LayerTransform
 import com.github.reygnn.walled.model.MemoryReport
 import com.github.reygnn.walled.model.MemoryRow
+import com.github.reygnn.walled.model.ProjectCodec
+import com.github.reygnn.walled.model.ProjectDecode
+import com.github.reygnn.walled.model.ProjectFile
+import com.github.reygnn.walled.model.ProjectFrame
+import com.github.reygnn.walled.model.ProjectMapping
+import com.github.reygnn.walled.model.ProjectProblem
 import com.github.reygnn.walled.model.SnapMode
 import com.github.reygnn.walled.model.SnapSettings
 import com.github.reygnn.walled.model.WallpaperLayerState
@@ -51,6 +60,14 @@ sealed interface EditorMessage {
     data object ApplyFailed : EditorMessage
     data object AddFailed : EditorMessage
     data class LayersUnloadable(val count: Int) : EditorMessage
+    data class ProjectOpened(val name: String) : EditorMessage
+    data class ProjectSaved(val name: String) : EditorMessage
+    data class ProjectInvalid(val problem: ProjectProblem) : EditorMessage
+    /** The project names images the folder does not have (or that cannot be decoded). */
+    data class ProjectFilesMissing(val files: List<String>) : EditorMessage
+    data object ProjectSaveFailed : EditorMessage
+    /** The chosen project folder is no longer accessible; choose it again. */
+    data object FolderUnavailable : EditorMessage
 }
 
 data class EditorUiState(
@@ -68,6 +85,12 @@ data class EditorUiState(
     val snap: SnapSettings = SnapSettings(),
     val isBusy: Boolean = false,
     val message: EditorMessage? = null,
+    /** Name of the chosen project folder, or null when none is set. */
+    val projectFolderName: String? = null,
+    /** Project files in the folder. */
+    val projects: List<String> = emptyList(),
+    /** The project last opened or saved — the default name for the next save. */
+    val projectName: String? = null,
 ) {
     val hasFrame: Boolean get() = frameWidth > 0 && frameHeight > 0
 
@@ -106,6 +129,8 @@ class EditorViewModel(
     private val imageStore: LayerImageStore,
     private val decoder: LayerDecoder,
     private val exporter: WallpaperExporter,
+    /** Opens a persisted project folder by its tree URI; null when access is gone. */
+    private val folderOpener: (String) -> ProjectFolder?,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
@@ -133,6 +158,7 @@ class EditorViewModel(
                     imageStore = app.imageStore,
                     decoder = { name -> decodeLayer(software = false) { app.imageStore.open(name) } },
                     exporter = { state, w, h, target -> exportToSystem(app, app.imageStore, state, w, h, target) },
+                    folderOpener = { uri -> SafProjectFolder.open(app, uri) },
                 )
             }
         }
@@ -165,6 +191,8 @@ class EditorViewModel(
     private val engagedEdges = mutableSetOf<LayerSnap.Edge>()
     /** The running gesture moved or zoomed something — only then does its end save. */
     private var gestureChanged = false
+    private var folder: ProjectFolder? = null
+    private var folderUri: String? = null
 
     init {
         viewModelScope.launch {
@@ -179,8 +207,10 @@ class EditorViewModel(
                     wallpaper = persisted.state,
                     snap = persisted.snap,
                     activeLayerId = persisted.state.layers.lastOrNull()?.id,
+                    projectName = persisted.project.name,
                 )
             }
+            persisted.project.folderUri?.let { restoreFolder(it) }
             decodeAll(persisted.state.layers)
         }
     }
@@ -198,7 +228,7 @@ class EditorViewModel(
      * Copies a picked image in and adds it on top, fitted to the frame width (as
      * the launcher's editor does), and makes it the active layer.
      */
-    fun addLayer(source: () -> InputStream?) {
+    fun addLayer(sourceName: String?, source: () -> InputStream?) {
         if (_state.value.isBusy) return
         _state.update { it.copy(isBusy = true) }
         viewModelScope.launch {
@@ -223,7 +253,11 @@ class EditorViewModel(
             } else {
                 null
             }
-            val layer = WallpaperLayerState(imageFile = name, transform = transform)
+            val layer = WallpaperLayerState(
+                imageFile = name,
+                transform = transform,
+                sourceName = sourceName?.let(ProjectCodec::sanitizeFileName)?.takeIf(ProjectCodec::isPlainFileName),
+            )
             _state.update {
                 it.copy(
                     isBusy = false,
@@ -457,6 +491,207 @@ class EditorViewModel(
             )
         }
         return MemoryReport(rows)
+    }
+
+    // ---- projects ----
+
+    /** The user picked a project folder (its grant is already persisted). */
+    fun setProjectFolder(treeUri: String) {
+        viewModelScope.launch {
+            val opened = withContext(ioDispatcher) { folderOpener(treeUri)?.let { it to it.listProjects() } }
+            if (opened == null) {
+                _state.update { it.copy(message = EditorMessage.FolderUnavailable) }
+                return@launch
+            }
+            folder = opened.first
+            folderUri = treeUri
+            _state.update {
+                it.copy(projectFolderName = opened.first.displayName, projects = opened.second, projectName = null)
+            }
+            saveProjectRef()
+        }
+    }
+
+    private suspend fun restoreFolder(treeUri: String) {
+        val opened = withContext(ioDispatcher) { folderOpener(treeUri)?.let { it to it.listProjects() } }
+        if (opened == null) {
+            // The grant is gone: forget the folder so the menu asks for it again.
+            _state.update { it.copy(projectName = null) }
+            writeLock.withLock { withContext(ioDispatcher) { repository.saveProject(ProjectRef()) } }
+            return
+        }
+        folder = opened.first
+        folderUri = treeUri
+        _state.update { it.copy(projectFolderName = opened.first.displayName, projects = opened.second) }
+    }
+
+    fun refreshProjects() {
+        val f = folder ?: return
+        viewModelScope.launch {
+            val list = withContext(ioDispatcher) { f.listProjects() }
+            _state.update { it.copy(projects = list) }
+        }
+    }
+
+    /**
+     * Replaces all layers with the project [name]. All or nothing: every image is
+     * copied in and decoded first; if one is missing or broken, nothing changes.
+     */
+    fun openProject(name: String) {
+        val f = folder ?: return
+        val s = _state.value
+        if (s.isBusy) return
+        cancelSnapBack()
+        _state.update { it.copy(isBusy = true) }
+        viewModelScope.launch {
+            val result = withContext(ioDispatcher) { loadProject(f, name, s.frameWidth, s.frameHeight) }
+            when (result) {
+                is ProjectLoad.Failed -> _state.update { it.copy(isBusy = false, message = result.message) }
+                is ProjectLoad.Loaded -> {
+                    val oldFiles = _state.value.wallpaper.layers.map { it.imageFile }
+                    val next = WallpaperState(result.layers.map { it.first })
+                    _state.update {
+                        it.copy(
+                            isBusy = false,
+                            wallpaper = next,
+                            decoded = result.layers.associate { (layer, d) -> layer.id to d },
+                            unloadable = emptySet(),
+                            activeLayerId = next.layers.lastOrNull()?.id,
+                            projectName = name,
+                            message = EditorMessage.ProjectOpened(name),
+                        )
+                    }
+                    persistLayers(deleteAfterSave = oldFiles)
+                    saveProjectRef()
+                }
+            }
+        }
+    }
+
+    private sealed interface ProjectLoad {
+        data class Loaded(val layers: List<Pair<WallpaperLayerState, DecodedLayer>>) : ProjectLoad
+        data class Failed(val message: EditorMessage) : ProjectLoad
+    }
+
+    /** Blocking: reads, copies in and decodes a project. Cleans up its copies on failure. */
+    private fun loadProject(f: ProjectFolder, name: String, frameW: Int, frameH: Int): ProjectLoad {
+        val raw = f.readText(name) ?: return ProjectLoad.Failed(EditorMessage.ProjectFilesMissing(listOf(name)))
+        val project = when (val d = ProjectCodec.decode(raw)) {
+            is ProjectDecode.Invalid -> return ProjectLoad.Failed(EditorMessage.ProjectInvalid(d.problem))
+            is ProjectDecode.Ok -> d.project
+        }
+        val loaded = mutableListOf<Pair<WallpaperLayerState, DecodedLayer>>()
+        val missing = mutableListOf<String>()
+        for (entry in project.layers) {
+            val copied = imageStore.copyIn { f.openFile(entry.file) }
+            val decoded = copied?.let { safeDecode(it) }
+            if (copied == null || decoded == null) {
+                copied?.let { imageStore.delete(listOf(it)) }
+                missing += entry.file
+                continue
+            }
+            val layer = WallpaperLayerState(
+                imageFile = copied,
+                transform = ProjectMapping.transformFor(entry, project.frame, frameW, frameH),
+                sourceName = entry.file,
+            )
+            loaded += layer to decoded
+        }
+        if (missing.isNotEmpty()) {
+            imageStore.delete(loaded.map { it.first.imageFile })
+            return ProjectLoad.Failed(EditorMessage.ProjectFilesMissing(missing.distinct()))
+        }
+        return ProjectLoad.Loaded(loaded)
+    }
+
+    /**
+     * Writes the current layers as project [input] into the folder. Each image is
+     * saved under its source name; one already there with the same size is reused,
+     * a different file of that name gets an alternative (`name (2).png`).
+     */
+    fun saveProject(input: String) {
+        val f = folder ?: return
+        val fileName = ProjectCodec.projectFileName(input) ?: return
+        val s = _state.value
+        if (s.isBusy || !s.hasFrame) return
+        cancelSnapBack()
+        _state.update { it.copy(isBusy = true) }
+        val placed = s.placedLayers.associateBy { it.id }
+        viewModelScope.launch {
+            val written = withContext(ioDispatcher) {
+                try {
+                    writeProject(f, fileName, s, placed)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "Saving project $fileName failed", e)
+                    null
+                }
+            }
+            if (written == null) {
+                _state.update { it.copy(isBusy = false, message = EditorMessage.ProjectSaveFailed) }
+                return@launch
+            }
+            val list = withContext(ioDispatcher) { f.listProjects() }
+            _state.update { st ->
+                st.copy(
+                    isBusy = false,
+                    // Remember the names the images now have in the folder, so the next save reuses them.
+                    wallpaper = st.wallpaper.copy(
+                        layers = st.wallpaper.layers.map { l -> written[l.id]?.let { l.copy(sourceName = it) } ?: l },
+                    ),
+                    projects = list,
+                    projectName = fileName,
+                    message = EditorMessage.ProjectSaved(fileName),
+                )
+            }
+            persistLayers()
+            saveProjectRef()
+        }
+    }
+
+    /** Blocking. Returns layer ID → file name in the folder, or null on a failed write. */
+    private fun writeProject(
+        f: ProjectFolder,
+        fileName: String,
+        s: EditorUiState,
+        placed: Map<String, PlacedLayer>,
+    ): Map<String, String>? {
+        val namesById = mutableMapOf<String, String>()
+        // Name → size of the image a layer of this save already put there.
+        val taken = mutableMapOf<String, Long>()
+        val layers = s.wallpaper.layers.mapIndexed { index, layer ->
+            val size = imageStore.length(layer.imageFile) ?: return null
+            val wanted = layer.sourceName
+                ?: ("layer_${index + 1}" + ProjectCodec.imageExtension(imageStore.header(layer.imageFile) ?: ByteArray(0)))
+            var n = 1
+            var name = wanted
+            while (true) {
+                // The same image (by size) again: share the file. Otherwise take a free name,
+                // or one whose existing file has this size (an earlier save of the same image).
+                if (taken[name] == size) break
+                if (name !in taken) {
+                    val existing = f.length(name)
+                    if (existing == null || existing == size) break
+                }
+                n++
+                name = ProjectCodec.alternativeName(wanted, n)
+            }
+            if (f.length(name) != size && !f.writeFile(name) { imageStore.open(layer.imageFile) }) return null
+            taken[name] = size
+            namesById[layer.id] = name
+            ProjectMapping.toProjectLayer(name, placed[layer.id]?.transform ?: layer.transform)
+        }
+        val project = ProjectFile(frame = ProjectFrame(s.frameWidth, s.frameHeight), layers = layers)
+        if (!f.writeText(fileName, ProjectCodec.encode(project))) return null
+        return namesById
+    }
+
+    private fun saveProjectRef() {
+        val ref = ProjectRef(folderUri = folderUri, name = _state.value.projectName)
+        viewModelScope.launch {
+            writeLock.withLock { withContext(ioDispatcher) { repository.saveProject(ref) } }
+        }
     }
 
     // ---- internals ----

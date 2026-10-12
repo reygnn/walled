@@ -23,6 +23,11 @@ data class WallpaperLayerState(
     val imageFile: String,
     /** `null` = never placed: the layer is center-cropped when first shown. */
     val transform: LayerTransform? = null,
+    /**
+     * The image's own file name (picker display name, or the name in a project
+     * folder) — what a project save writes it as. `null` when unknown.
+     */
+    val sourceName: String? = null,
 ) {
     companion object {
         // Thread-safe: layers can be created from different threads.

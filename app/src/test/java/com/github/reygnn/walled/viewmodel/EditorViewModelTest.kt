@@ -3,10 +3,18 @@ package com.github.reygnn.walled.viewmodel
 import android.graphics.Bitmap
 import com.github.reygnn.walled.data.LayerImageStore
 import com.github.reygnn.walled.data.PersistedEditor
+import com.github.reygnn.walled.data.ProjectFolder
+import com.github.reygnn.walled.data.ProjectRef
 import com.github.reygnn.walled.data.WallpaperRepository
 import com.github.reygnn.walled.imaging.DecodedLayer
 import com.github.reygnn.walled.imaging.LayerGeometry
 import com.github.reygnn.walled.model.LayerTransform
+import com.github.reygnn.walled.model.ProjectCodec
+import com.github.reygnn.walled.model.ProjectDecode
+import com.github.reygnn.walled.model.ProjectFile
+import com.github.reygnn.walled.model.ProjectFrame
+import com.github.reygnn.walled.model.ProjectLayer
+import com.github.reygnn.walled.model.ProjectProblem
 import com.github.reygnn.walled.model.SnapMode
 import com.github.reygnn.walled.model.SnapSettings
 import com.github.reygnn.walled.model.WallpaperLayerState
@@ -14,6 +22,7 @@ import com.github.reygnn.walled.model.WallpaperState
 import com.github.reygnn.walled.model.WallpaperTarget
 import com.github.reygnn.walled.testing.MainDispatcherRule
 import io.mockk.mockk
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -24,6 +33,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.io.InputStream
 
 class EditorViewModelTest {
 
@@ -36,12 +46,32 @@ class EditorViewModelTest {
     private class FakeRepository(var persisted: PersistedEditor = PersistedEditor()) : WallpaperRepository {
         val savedLayers = mutableListOf<WallpaperState>()
         val savedSnaps = mutableListOf<SnapSettings>()
+        val savedProjects = mutableListOf<ProjectRef>()
         override suspend fun load() = persisted
         override suspend fun saveLayers(state: WallpaperState) {
             savedLayers += state
         }
         override suspend fun saveSnap(snap: SnapSettings) {
             savedSnaps += snap
+        }
+        override suspend fun saveProject(project: ProjectRef) {
+            savedProjects += project
+        }
+    }
+
+    /** An in-memory project folder; [failWrites] makes every write fail. */
+    private class FakeFolder(override val displayName: String = "walled-layers") : ProjectFolder {
+        val files = mutableMapOf<String, ByteArray>()
+        var failWrites = false
+        override fun listProjects() = files.keys.filter { it.endsWith(".json") }.sorted()
+        override fun readText(name: String) = files[name]?.decodeToString()
+        override fun openFile(name: String) = files[name]?.inputStream()
+        override fun length(name: String) = files[name]?.size?.toLong()
+        override fun writeText(name: String, text: String) = writeFile(name) { text.byteInputStream() }
+        override fun writeFile(name: String, source: () -> InputStream?): Boolean {
+            if (failWrites) return false
+            files[name] = source()?.use { it.readBytes() } ?: return false
+            return true
         }
     }
 
@@ -57,6 +87,9 @@ class EditorViewModelTest {
     private var nextAddSize: Pair<Int, Int>? = 600 to 400
     private val exports = mutableListOf<Export>()
     private var exportResult: () -> Boolean = { true }
+    private val folder = FakeFolder()
+    /** Tree URI → folder; a missing entry is a folder whose grant is gone. */
+    private val folders = mutableMapOf("content://tree/walled" to folder)
 
     private fun decoded(size: Pair<Int, Int>) =
         DecodedLayer(mockk<Bitmap>(relaxed = true), sampleSize = 1, originalWidth = size.first, originalHeight = size.second)
@@ -74,6 +107,7 @@ class EditorViewModelTest {
                 exports += Export(state, w, h, target)
                 exportResult()
             },
+            folderOpener = { uri -> folders[uri] },
             ioDispatcher = mainRule.testDispatcher,
         )
         vm.setFrameSize(frameW, frameH)
@@ -156,7 +190,7 @@ class EditorViewModelTest {
         val vm = createViewModel()
         advanceUntilIdle()
 
-        vm.addLayer { "image".byteInputStream() }
+        vm.addLayer("ducks.png") { "image".byteInputStream() }
         advanceUntilIdle()
 
         val s = vm.state.value
@@ -165,6 +199,7 @@ class EditorViewModelTest {
         assertEquals(LayerGeometry.fitWidth(600, 400, frameW, frameH), layer.transform)
         assertTrue(file(layer.imageFile).exists())
         assertEquals(s.wallpaper, repository.savedLayers.last())
+        assertEquals("ducks.png", layer.sourceName)
         assertFalse(s.isBusy)
     }
 
@@ -174,7 +209,7 @@ class EditorViewModelTest {
         val vm = createViewModel()
         advanceUntilIdle()
 
-        vm.addLayer { "garbage".byteInputStream() }
+        vm.addLayer(null) { "garbage".byteInputStream() }
         advanceUntilIdle()
 
         assertEquals(EditorMessage.AddFailed, vm.state.value.message)
@@ -367,5 +402,163 @@ class EditorViewModelTest {
         assertEquals(WallpaperState.NONE, repository.savedLayers.last())
         assertEquals(0, File(tmp.root, "layers").listFiles()!!.size)
         assertNull(vm.state.value.activeLayerId)
+    }
+
+    // ---- projects ----
+
+    private fun projectJson(vararg layers: ProjectLayer, frame: ProjectFrame? = ProjectFrame(frameW, frameH)) =
+        ProjectCodec.encode(ProjectFile(frame = frame, layers = layers.toList())).toByteArray()
+
+    /** An image in the project folder; it decodes at the size queued in `nextAddSize`. */
+    private fun folderImage(name: String, content: String) {
+        folder.files[name] = content.toByteArray()
+    }
+
+    private fun TestScope.vmWithFolder(): EditorViewModel {
+        nextAddSize = 100 to 100
+        val vm = createViewModel()
+        advanceUntilIdle()
+        vm.setProjectFolder("content://tree/walled")
+        advanceUntilIdle()
+        return vm
+    }
+
+    @Test
+    fun `choosing a folder lists its projects and remembers it`() = runTest(mainRule.testDispatcher) {
+        folder.files["b.json"] = projectJson()
+        folder.files["a.json"] = projectJson()
+        folderImage("ducks.png", "d")
+
+        val vm = vmWithFolder()
+
+        assertEquals("walled-layers", vm.state.value.projectFolderName)
+        assertEquals(listOf("a.json", "b.json"), vm.state.value.projects)
+        assertEquals(ProjectRef("content://tree/walled", null), repository.savedProjects.last())
+    }
+
+    @Test
+    fun `a remembered folder is reopened at start, a lost one is forgotten`() = runTest(mainRule.testDispatcher) {
+        repository.persisted = PersistedEditor(project = ProjectRef("content://tree/walled", "k.json"))
+        val vm = createViewModel()
+        advanceUntilIdle()
+        assertEquals("walled-layers", vm.state.value.projectFolderName)
+        assertEquals("k.json", vm.state.value.projectName)
+
+        repository.persisted = PersistedEditor(project = ProjectRef("content://tree/gone", "k.json"))
+        val lost = createViewModel()
+        advanceUntilIdle()
+        assertNull(lost.state.value.projectFolderName)
+        assertEquals(ProjectRef(), repository.savedProjects.last())
+    }
+
+    @Test
+    fun `opening a project replaces the layers with its images and placement`() = runTest(mainRule.testDispatcher) {
+        persist(WallpaperLayerState(id = "old", imageFile = "fold") to (100 to 100))
+        folderImage("ducks.png", "d")
+        folderImage("seal.png", "s")
+        folder.files["k.json"] = projectJson(
+            ProjectLayer("ducks.png", 1.5f, 0f, 58f),
+            ProjectLayer("seal.png"),
+        )
+        val vm = vmWithFolder()
+
+        vm.openProject("k.json")
+        advanceUntilIdle()
+
+        val s = vm.state.value
+        assertEquals(listOf("ducks.png", "seal.png"), s.wallpaper.layers.map { it.sourceName })
+        assertEquals(LayerTransform(1.5f, 0f, 58f), s.wallpaper.layers[0].transform)
+        assertNull(s.wallpaper.layers[1].transform)
+        assertEquals(s.wallpaper.layers[1].id, s.activeLayerId)
+        assertEquals(EditorMessage.ProjectOpened("k.json"), s.message)
+        assertEquals("k.json", s.projectName)
+        // The new copies are saved, the old layer's file is gone.
+        assertEquals(s.wallpaper, repository.savedLayers.last())
+        assertFalse(file("fold").exists())
+        assertEquals("d", file(s.wallpaper.layers[0].imageFile).readText())
+    }
+
+    @Test
+    fun `a project with a missing image changes nothing and leaves no copies`() = runTest(mainRule.testDispatcher) {
+        persist(WallpaperLayerState(id = "old", imageFile = "fold") to (100 to 100))
+        folderImage("ducks.png", "d")
+        folder.files["k.json"] = projectJson(ProjectLayer("ducks.png"), ProjectLayer("gone.png"))
+        val vm = vmWithFolder()
+
+        vm.openProject("k.json")
+        advanceUntilIdle()
+
+        assertEquals(EditorMessage.ProjectFilesMissing(listOf("gone.png")), vm.state.value.message)
+        assertEquals(listOf("old"), vm.state.value.wallpaper.layers.map { it.id })
+        assertEquals(listOf("fold"), File(tmp.root, "layers").list()!!.toList())
+        assertFalse(vm.state.value.isBusy)
+    }
+
+    @Test
+    fun `an invalid project file is reported`() = runTest(mainRule.testDispatcher) {
+        folder.files["x.json"] = """{ "format": "something-else" }""".toByteArray()
+        val vm = vmWithFolder()
+
+        vm.openProject("x.json")
+        advanceUntilIdle()
+
+        assertEquals(EditorMessage.ProjectInvalid(ProjectProblem.NOT_A_PROJECT), vm.state.value.message)
+    }
+
+    @Test
+    fun `saving writes the json and copies images the folder does not have`() = runTest(mainRule.testDispatcher) {
+        persist(
+            WallpaperLayerState(id = "a", imageFile = "fa", transform = LayerTransform(2f, 3f, 4f), sourceName = "ducks.png") to (100 to 100),
+            WallpaperLayerState(id = "b", imageFile = "fb", transform = LayerTransform(1f, 0f, 0f)) to (100 to 100),
+        )
+        file("fb").writeBytes(byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47))
+        val vm = vmWithFolder()
+
+        vm.saveProject("kolibri")
+        advanceUntilIdle()
+
+        val project = (ProjectCodec.decode(folder.readText("kolibri.json")!!) as ProjectDecode.Ok).project
+        assertEquals(ProjectFrame(frameW, frameH), project.frame)
+        assertEquals(
+            listOf(ProjectLayer("ducks.png", 2f, 3f, 4f), ProjectLayer("layer_2.png", 1f, 0f, 0f)),
+            project.layers,
+        )
+        assertEquals("x", folder.files["ducks.png"]!!.decodeToString())
+        assertEquals(EditorMessage.ProjectSaved("kolibri.json"), vm.state.value.message)
+        assertEquals(listOf("kolibri.json"), vm.state.value.projects)
+        // The layer without a source name now remembers the name it got.
+        assertEquals("layer_2.png", vm.state.value.wallpaper.layers[1].sourceName)
+    }
+
+    @Test
+    fun `saving reuses a same-size file and renames around a different one`() = runTest(mainRule.testDispatcher) {
+        persist(
+            WallpaperLayerState(id = "a", imageFile = "fa", sourceName = "same.png") to (100 to 100),
+            WallpaperLayerState(id = "b", imageFile = "fb", sourceName = "clash.png") to (100 to 100),
+        )
+        folder.files["same.png"] = "x".toByteArray() // same size as the layer's file
+        folder.files["clash.png"] = "something else".toByteArray()
+        val vm = vmWithFolder()
+
+        vm.saveProject("p")
+        advanceUntilIdle()
+
+        val project = (ProjectCodec.decode(folder.readText("p.json")!!) as ProjectDecode.Ok).project
+        assertEquals(listOf("same.png", "clash (2).png"), project.layers.map { it.file })
+        assertEquals("something else", folder.files["clash.png"]!!.decodeToString())
+    }
+
+    @Test
+    fun `a failed write is reported and nothing is remembered`() = runTest(mainRule.testDispatcher) {
+        persist(WallpaperLayerState(id = "a", imageFile = "fa", sourceName = "a.png") to (100 to 100))
+        val vm = vmWithFolder()
+        folder.failWrites = true
+
+        vm.saveProject("p")
+        advanceUntilIdle()
+
+        assertEquals(EditorMessage.ProjectSaveFailed, vm.state.value.message)
+        assertNull(vm.state.value.projectName)
+        assertFalse(vm.state.value.isBusy)
     }
 }

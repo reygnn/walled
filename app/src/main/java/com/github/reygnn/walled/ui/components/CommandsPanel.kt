@@ -50,6 +50,11 @@ fun CommandsPanel(
     layerCount: Int,
     unloadableCount: Int,
     snap: SnapSettings,
+    projectFolderName: String?,
+    projectName: String?,
+    onChooseFolder: () -> Unit,
+    onOpenProject: () -> Unit,
+    onSaveProject: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onRemoveLayer: () -> Unit,
@@ -97,6 +102,34 @@ fun CommandsPanel(
                     Text("✕")
                 }
             }
+
+            // ---- projects ----
+            Text(stringResource(R.string.cp_section_projects), style = MaterialTheme.typography.labelMedium)
+            Text(
+                text = when {
+                    projectFolderName == null -> stringResource(R.string.cp_no_folder)
+                    projectName == null -> stringResource(R.string.cp_folder, projectFolderName)
+                    else -> stringResource(R.string.cp_folder_project, projectFolderName, projectName)
+                },
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onOpenProject,
+                    enabled = projectFolderName != null,
+                    modifier = Modifier.weight(1f),
+                ) { Text(stringResource(R.string.cp_btn_open_project)) }
+                OutlinedButton(
+                    onClick = onSaveProject,
+                    enabled = projectFolderName != null && layerCount > 0,
+                    modifier = Modifier.weight(1f),
+                ) { Text(stringResource(R.string.cp_btn_save_project)) }
+            }
+            OutlinedButton(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.cp_btn_choose_folder))
+            }
+
+            HorizontalDivider()
 
             // ---- layer stack ----
             Text(

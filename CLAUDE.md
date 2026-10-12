@@ -47,16 +47,17 @@ Deliberate differences from the launcher:
 Does: pick images as layers (photo picker), move/zoom the active layer,
 select by tap, reorder/remove layers, fit-width / 1:1 / fill presets,
 magnetic snapping (edges or center, per axis), memory info, set as home /
-lock / both.
+lock / both, JSON projects (open/save in a user-chosen folder).
 
 Doesn't (needs explicit agreement before building): rotation, per-layer
-opacity, PNG export, backup/restore, live wallpaper, EXIF orientation (the
-launcher ignored it too — see `TODO.md`).
+opacity, PNG export, live wallpaper, EXIF orientation (the launcher ignored
+it too — see `TODO.md`).
 
 ## Stack particulars
 
-- DataStore Preferences for the layer list (JSON via kotlinx-serialization)
-  and the snap settings.
+- DataStore Preferences for the layer list (JSON via kotlinx-serialization),
+  the snap settings and the project folder (tree URI) + last project name.
+- `androidx.documentfile` for the project folder (Storage Access Framework).
 - kotlinx-serialization 1.11.0 (plugin version tracks Kotlin).
 - Release builds are **unsigned**; `~/apk/install-aab.sh` signs them with the
   family key.
@@ -67,10 +68,12 @@ launcher ignored it too — see `TODO.md`).
 com.github.reygnn.walled/
   WalledApplication       composition root (repository, image store)
   MainActivity            immersive full-screen host
-  model/                  WallpaperState / LayerTransform / SnapSettings / MemoryReport
+  model/                  WallpaperState / LayerTransform / SnapSettings / MemoryReport,
+                          Project (ProjectFile, ProjectCodec, ProjectMapping)
   imaging/                LayerGeometry, LayerSnap (pure), decodeLayer, LayerPainter,
                           WallpaperFlattener (export + WallpaperManager)
-  data/                   LayerImageStore (files), WallpaperRepository (DataStore), LayerCodec
+  data/                   LayerImageStore (files), WallpaperRepository (DataStore), LayerCodec,
+                          ProjectFolder / SafProjectFolder (project folder via SAF)
   viewmodel/              EditorViewModel (state, gestures, persistence, apply)
   ui/                     EditorScreen, LayerCanvas, EditorFab, CommandsPanel, Dialogs
 ```
@@ -93,3 +96,9 @@ Layer transforms, gestures and the export are all in frame pixels;
    "apply" (`unloadable`) — never set a wallpaper with a hole in it.
 4. **The state stores file names, never paths or `content://` URIs.**
    Picked images are copied into `filesDir/layers/`.
+5. **Projects are a folder, not a file.** A project JSON names its images by
+   plain file names in the same folder (`ProjectCodec.isPlainFileName`); only a
+   granted SAF tree makes those siblings readable. Opening is all-or-nothing
+   like the export. The format is documented on `ProjectFile`; bump
+   `ProjectCodec.VERSION` only for changes an older app cannot read — older
+   files must keep opening.

@@ -21,15 +21,37 @@ It is the wallpaper editor of Unity-Launcher, made into its own app.
   are rendered at the screen's native resolution.
 - **Memory info:** decoded and source size and memory per layer. Large
   photos are downsampled to about 10.5 MP for decoding.
+- **Projects:** save the layers as a JSON project into a folder of your
+  choice and open them again later. A project lists each image by file name
+  (in the same folder) with its scale and position:
+
+  ```json
+  {
+      "format": "walled-project",
+      "version": 1,
+      "frame": { "width": 1080, "height": 2340 },
+      "layers": [
+          { "file": "ducks.png", "scale": 1.534, "x": 0.0, "y": 58.36 },
+          { "file": "seal.png" }
+      ]
+  }
+  ```
+
+  Layers go bottom to top. `x`/`y` are screen pixels, `scale` is screen
+  pixels per image pixel (1 = original size). A layer without
+  `scale`/`x`/`y` fills the screen. `frame` is the screen the values were
+  made for; on a different screen they are scaled to the width and centered
+  vertically. Projects can be written or edited by hand.
 
 Everything is saved as you go: the layers (as private copies of the picked
-images) and the snap settings survive restarts.
+images), the snap settings and the project folder survive restarts.
 
 ## Using it
 
 1. Tap **🛠** → **➕** and pick an image. Repeat for more layers.
 2. Drag and pinch to place the active layer; tap another layer to switch.
-3. **☰** opens the menu: layer order, removal, snapping, memory.
+3. **☰** opens the menu: projects, layer order, removal, snapping, memory.
+   Choose a project folder once (📁), then open (📂) or save (💾) projects.
 4. Tap **🛠** → 🏠 / 🔒 / 📱 to set the wallpaper.
 
 ## Build
